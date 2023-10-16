@@ -1,18 +1,19 @@
 #include "temp_geom_reader.h"
 
+#include <boost/algorithm/string.hpp>
+#include <c++/UDA.hpp>
 #include <clientserver/initStructs.h>
 #include <clientserver/stringUtils.h>
 #include <clientserver/udaStructs.h>
 #include <clientserver/udaTypes.h>
-#include <ios>
-#include <plugins/udaPlugin.h>
-#include <c++/UDA.hpp>
 #include <fmt/format.h>
-#include <boost/algorithm/string.hpp>
+#include <ios>
+#include <plugins/pluginStructs.h>
+#include <plugins/udaPlugin.h>
 
-#include <fstream>
-#include <deque>
 #include "utils/uda_plugin_helpers.hpp"
+#include <deque>
+#include <fstream>
 // #include <string>
 
 class TempGeomReaderPlugin {
@@ -51,16 +52,14 @@ std::deque<std::string> split_request(std::string_view var) {
     return split_vec;
 }
 
-int tree_check(uda::TreeNode& temp_tree) { 
-    
+int tree_check(uda::TreeNode& temp_tree) {
+
     if (!temp_tree.numChildren()) {
-        UDA_LOG(UDA_LOG_DEBUG, 
-            "\nimas_json_plugin::plugin_helpers::tree_check: No children found\n");
+        UDA_LOG(UDA_LOG_DEBUG, "\nimas_json_plugin::plugin_helpers::tree_check: No children found\n");
         return 1;
     }
     if (temp_tree.child(0).name() != "data") {
-        UDA_LOG(UDA_LOG_DEBUG, 
-            "\nimas_json_plugin::plugin_helpers::tree_check: No child named data\n");
+        UDA_LOG(UDA_LOG_DEBUG, "\nimas_json_plugin::plugin_helpers::tree_check: No child named data\n");
         return 1;
     }
     return 0;
@@ -68,7 +67,7 @@ int tree_check(uda::TreeNode& temp_tree) {
 
 std::vector<std::string> get_treenode_child_names(uda::TreeNode& tree) {
     std::vector<std::string> temp_name_vec;
-    for ( auto& child : tree.children() ) {
+    for (auto& child : tree.children()) {
         temp_name_vec.push_back(child.name());
     }
     return temp_name_vec;
@@ -76,26 +75,23 @@ std::vector<std::string> get_treenode_child_names(uda::TreeNode& tree) {
 
 int tree_node_traversal(uda::TreeNode& tree, std::deque<std::string>& vec_split) {
 
-    if ( vec_split.size() <= 1 or !tree.numChildren() ) {
-        UDA_LOG(UDA_LOG_DEBUG, 
-            "\nimas_json_plugin::plugin_helpers::tree_node_traversal: TreeNode at bottom level\n");
+    if (vec_split.size() <= 1 or !tree.numChildren()) {
+        UDA_LOG(UDA_LOG_DEBUG, "\nimas_json_plugin::plugin_helpers::tree_node_traversal: TreeNode at bottom level\n");
         return 0;
     }
-    
+
     std::vector<std::string> children{get_treenode_child_names(tree)};
     auto result = std::find(children.begin(), children.end(), vec_split.front());
-    if ( result != children.end() ) {
+    if (result != children.end()) {
         tree = tree.child(std::distance(children.begin(), result));
         vec_split.pop_front();
-        tree_node_traversal(tree,vec_split);
+        tree_node_traversal(tree, vec_split);
     } else {
-        UDA_LOG(UDA_LOG_DEBUG, 
-            "\nimas_json_plugin::plugin_helpers::tree_node_traversal: Child name not found\n");
+        UDA_LOG(UDA_LOG_DEBUG, "\nimas_json_plugin::plugin_helpers::tree_node_traversal: Child name not found\n");
         return 1;
     }
     return 0;
 };
-
 
 int set_return_data(IDAM_PLUGIN_INTERFACE* interface, uda::TreeNode& final_tree, const std::string& final_var) {
 
@@ -106,77 +102,57 @@ int set_return_data(IDAM_PLUGIN_INTERFACE* interface, uda::TreeNode& final_tree,
     std::vector<std::vector<size_t>> ashape = final_tree.atomicShape();
 
     auto result = std::find(anames.begin(), anames.end(), final_var);
-    if ( result == anames.end() ) { return 1; }
+    if (result == anames.end()) {
+        return 1;
+    }
 
     long idx{std::distance(anames.begin(), result)};
 
-    //Would be good to use apoint here but seems to be false every time
-    std::ofstream my_log_file;
-    my_log_file.open("/Users/aparker/UDADevelopment/geom_out.log", std::ios_base::app);
-    my_log_file << "Rank size : " << arank.size() << std::endl;
-    my_log_file << "Names size : " << anames.size() << std::endl;
-    my_log_file << "Name 0 : " << anames[0] << std::endl;
-    my_log_file << "Name 1 : " << anames[1] << std::endl;
-    my_log_file << "Rank 0 : " << arank[0] << std::endl;
-    my_log_file << "Rank 1 : " << arank[1] << std::endl;
+    // Would be good to use apoint here but seems to be false every time
     if (arank[idx] > 0) {
         if (atypes[idx] == std::string("int")) {
             imas_json_plugin::uda_helpers::setReturnDataArrayType<int>(
-                        interface->data_block, 
-                        gsl::span<const int>{ 
-                            static_cast<int*>(final_tree.structureComponentData(final_var)),
-                            ashape[idx][0] 
-                        },
-                        gsl::span<const size_t>{ashape[idx]}
-            );
+                interface->data_block,
+                gsl::span<const int>{static_cast<int*>(final_tree.structureComponentData(final_var)), ashape[idx][0]},
+                gsl::span<const size_t>{ashape[idx]});
         } else if (atypes[idx] == std::string("float")) {
             imas_json_plugin::uda_helpers::setReturnDataArrayType<float>(
-                        interface->data_block, 
-                        gsl::span<const float>{ 
-                            static_cast<float*>(final_tree.structureComponentData(final_var)),
-                            ashape[idx][0] 
-                        },
-                        gsl::span<const size_t>{ashape[idx]}
-            );
+                interface->data_block,
+                gsl::span<const float>{static_cast<float*>(final_tree.structureComponentData(final_var)),
+                                       ashape[idx][0]},
+                gsl::span<const size_t>{ashape[idx]});
         } else if (atypes[idx] == std::string("double")) {
             imas_json_plugin::uda_helpers::setReturnDataArrayType<double>(
-                        interface->data_block, 
-                        gsl::span<const double>{ 
-                            static_cast<double*>(final_tree.structureComponentData(final_var)),
-                            ashape[idx][0] 
-                        },
-                        gsl::span<const size_t>{ashape[idx]}
-            );
+                interface->data_block,
+                gsl::span<const double>{static_cast<double*>(final_tree.structureComponentData(final_var)),
+                                        ashape[idx][0]},
+                gsl::span<const size_t>{ashape[idx]});
         } else {
-            UDA_LOG(UDA_LOG_DEBUG, 
-                "\nimas_json_plugin::plugin_helpers::set_return_data: Unrecognised data type\n");
+            UDA_LOG(UDA_LOG_DEBUG, "\nimas_json_plugin::plugin_helpers::set_return_data: Unrecognised data type\n");
             return 1;
         }
     } else {
         if (atypes[idx] == std::string("int")) {
             imas_json_plugin::uda_helpers::setReturnDataScalarType<int>(
-                    interface->data_block, 
-                    *static_cast<int*>(final_tree.structureComponentData(final_var))
-            );
+                interface->data_block, *static_cast<int*>(final_tree.structureComponentData(final_var)));
         } else if (atypes[idx] == std::string("float")) {
             imas_json_plugin::uda_helpers::setReturnDataScalarType<float>(
-                    interface->data_block, 
-                    *static_cast<float*>(final_tree.structureComponentData(final_var)) 
-            );
+                interface->data_block, *static_cast<float*>(final_tree.structureComponentData(final_var)));
         } else if (atypes[idx] == std::string("double")) {
             imas_json_plugin::uda_helpers::setReturnDataScalarType<double>(
-                    interface->data_block, 
-                    *static_cast<double*>(final_tree.structureComponentData(final_var))
-            );
+                interface->data_block, *static_cast<double*>(final_tree.structureComponentData(final_var)));
         } else {
-            UDA_LOG(UDA_LOG_DEBUG,
-                "\nimas_json_plugin::plugin_helpers::set_return_data: Unrecognised data type\n");
+            UDA_LOG(UDA_LOG_DEBUG, "\nimas_json_plugin::plugin_helpers::set_return_data: Unrecognised data type\n");
             return 1;
         }
     }
 
-    return 0; 
+    return 0;
 };
+
+int custom_passive(IDAM_PLUGIN_INTERFACE* interface, uda::TreeNode& final_tree, const std::string& final_var) { 
+    return 0;
+}
 
 int TempGeomReaderPlugin::get(IDAM_PLUGIN_INTERFACE* interface) {
 
@@ -195,7 +171,7 @@ int TempGeomReaderPlugin::get(IDAM_PLUGIN_INTERFACE* interface) {
     const char* host{nullptr};
     FIND_REQUIRED_STRING_VALUE(request_data->nameValueList, host);
     std::string const host_str{host};
-    
+
     int source{0};
     FIND_REQUIRED_INT_VALUE(request_data->nameValueList, source);
     const char* signal{nullptr};
@@ -205,29 +181,31 @@ int TempGeomReaderPlugin::get(IDAM_PLUGIN_INTERFACE* interface) {
     FIND_REQUIRED_STRING_VALUE(request_data->nameValueList, key);
     std::string const key_str{key};
 
+    bool is_custom_passive = findValue(&request_data->nameValueList, "custom_passive");
+
     static uda::Client client;
     uda::Client::setServerHostName(host_str);
     uda::Client::setServerPort(port);
 
     // eg. GEOM::get(signal=/magnetics/pfcoil/d1_upper, Config=1);
     std::transform(signal_str.begin(), signal_str.end(), signal_str.begin(), ::tolower);
-    
+
     std::string geom_request = fmt::format("GEOM::get(signal={}, Config=1)", signal_str);
     // std::string geom_request = fmt::format("GEOM::get(signal={}, cal=1)", signal_str);
- 
+
     std::deque<std::string> split_vec{split_request(key_str)};
     const uda::Result& data = client.get(geom_request, std::to_string(source));
 
-    //Check for errors
+    // Check for errors
     if (data.errorCode() != uda::OK) {
         RAISE_PLUGIN_ERROR("uda::Result data is not uda::OK");
     }
 
-    //Check this returned data is a structure: Set (register) the data tree for accessors
+    // Check this returned data is a structure: Set (register) the data tree for accessors
     if (!data.isTree()) {
         RAISE_PLUGIN_ERROR("Returned data is not of expected tree structure");
     }
-         
+
     uda::TreeNode root_tree = data.tree();
     // Hack to skip two levels
     if (!tree_check(root_tree)) {
@@ -236,8 +214,12 @@ int TempGeomReaderPlugin::get(IDAM_PLUGIN_INTERFACE* interface) {
     if (!tree_check(root_tree)) {
         root_tree = root_tree.child(0);
     }
+    
+    if (is_custom_passive) {
+        return custom_passive(interface, root_tree, split_vec.back());
+    }
 
-    if(tree_node_traversal(root_tree, split_vec)) {
+    if (tree_node_traversal(root_tree, split_vec)) {
         return 1;
     }
 
