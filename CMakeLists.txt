@@ -8,25 +8,25 @@ set ( CMAKE_CXX17_EXTENSION_COMPILE_OPTION "-std=c++17" )
 set ( CMAKE_CXX_EXTENSIONS ON )
 
 set( CONFIGS
-    temp_geom_reader.cfg
+    geometry_map_reader.cfg
 )
 
 set( SOURCES
-    temp_geom_reader.cpp
+    geometry_map_reader.cpp
 )
 
 set( HEADERS
-    temp_geom_reader.h
+    geometry_map_reader.h
 )
 
 include( plugins )
 uda_plugin(
-    NAME TEMP_GEOM
-    ENTRY_FUNC TempGeomReader
+    NAME GEOMETRY
+    ENTRY_FUNC GeometryMapReader
     DESCRIPTION "Temporary plugin to read MAST-U GEOM data"
-    EXAMPLE "TEMP_GEOM::get()"
-    LIBNAME temp_geom_reader
-    SOURCES temp_geom_reader.cpp
+    EXAMPLE "GEOMETRY::get()"
+    LIBNAME geometry_map_reader
+    SOURCES geometry_map_reader.cpp
     CONFIG_FILE ${CONFIGS}
     EXTRA_INCLUDE_DIRS
       ${UDA_CLIENT_INCLUDE_DIRS}
