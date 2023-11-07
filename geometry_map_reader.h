@@ -1,5 +1,5 @@
-#ifndef TEMP_GEOM_READER_PLUGIN_H
-#define TEMP_GEOM_READER_PLUGIN_H
+#ifndef GEOMETRY_MAP_READER_PLUGIN_H
+#define GEOMETRY_MAP_READER_PLUGIN_H
 
 #include <clientserver/export.h>
 #include <plugins/udaPlugin.h>
@@ -12,10 +12,10 @@ extern "C" {
 #define THISPLUGIN_MAX_INTERFACE_VERSION 1 // Interface versions higher than this will not be understood!
 #define THISPLUGIN_DEFAULT_METHOD "help"
 
-LIBRARY_API [[maybe_unused]] int TempGeomReader(IDAM_PLUGIN_INTERFACE* idam_plugin_interface);
+LIBRARY_API [[maybe_unused]] int GeometryMapReader(IDAM_PLUGIN_INTERFACE* idam_plugin_interface);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // TEMP_GEOM_READER_PLUGIN_H
+#endif // GEOMETRY_MAP_READER_PLUGIN_H
