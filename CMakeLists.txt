@@ -19,6 +19,8 @@ set( HEADERS
     geometry_map_reader.h
 )
 
+find_package( BOOST REQUIRED )
+
 include( plugins )
 uda_plugin(
     NAME GEOMETRY

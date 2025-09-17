@@ -1,17 +1,24 @@
 #include "geometry_map_reader.h"
 
 #include <boost/algorithm/string.hpp>
+#include <fmt/format.h>
+
+#include <deque>
+#include <unordered_map>
+#include <string>
+#include <optional>
+#include <functional>
+
+// UDA includes
 #include <c++/UDA.hpp>
 #include <clientserver/initStructs.h>
 #include <clientserver/stringUtils.h>
 #include <clientserver/udaStructs.h>
 #include <clientserver/udaTypes.h>
-#include <fmt/format.h>
 #include <plugins/pluginStructs.h>
 #include <plugins/udaPlugin.h>
 
 #include "utils/uda_plugin_helpers.hpp"
-#include <deque>
 
 class GeometryMapReaderPlugin {
   public:
@@ -40,7 +47,10 @@ class GeometryMapReaderPlugin {
     int get(IDAM_PLUGIN_INTERFACE* plugin_interface);
 
   private:
+    std::optional<std::reference_wrapper<const uda::Result>> check_cache(const std::string& key);
+
     bool init_ = false;
+    std::unordered_map<std::string, const uda::Result&> cache_ = {};
 };
 
 std::deque<std::string> split_request(std::string_view var) {
@@ -147,6 +157,38 @@ int set_return_data(IDAM_PLUGIN_INTERFACE* interface, uda::TreeNode& final_tree,
     return 0;
 };
 
+std::string make_cache_key(std::string_view signal, int source, std::string_view host, int port)
+{
+    // start with signal as most likely to change most frequently
+    return fmt::format("{}|{}|{}|{}", signal, source, host, port);
+}
+
+std::optional<std::reference_wrapper<const uda::Result>> GeometryMapReaderPlugin::check_cache(const std::string& key)
+{
+    auto result = cache_.find(key);
+    if (result != cache_.end())
+    {
+        return std::cref(result->second);
+    }
+    return std::nullopt;
+}
+
+int navigate_to_path(std::deque<std::string>& path, uda::TreeNode& root_tree)
+{
+    // Hack to skip two levels
+    if (!tree_check(root_tree)) {
+        root_tree = root_tree.child(0);
+    }
+    if (!tree_check(root_tree)) {
+        root_tree = root_tree.child(0);
+    }
+
+    if (tree_node_traversal(root_tree, path)) {
+        return 1;
+    }
+    return 0;
+}
+
 int GeometryMapReaderPlugin::get(IDAM_PLUGIN_INTERFACE* interface) {
 
     //////////////////////////////////////////////////////////////
@@ -173,8 +215,21 @@ int GeometryMapReaderPlugin::get(IDAM_PLUGIN_INTERFACE* interface) {
     const char* key{nullptr};
     FIND_REQUIRED_STRING_VALUE(request_data->nameValueList, key);
     std::string const key_str{key};
+    std::deque<std::string> split_vec{split_request(key_str)};
 
     static uda::Client client;
+
+    auto cache_key = make_cache_key(signal, source, host, port);
+    auto maybe_result = check_cache(key);
+    if (maybe_result.has_value()){
+        const uda::Result& data = maybe_result->get();
+        uda::TreeNode root_tree = data.tree();
+        if (int err=navigate_to_path(split_vec, root_tree) != 0){
+            return err;
+        }
+        return set_return_data(interface, root_tree, split_vec.front());
+    }
+
     uda::Client::setServerHostName(host_str);
     uda::Client::setServerPort(port);
 
@@ -183,7 +238,6 @@ int GeometryMapReaderPlugin::get(IDAM_PLUGIN_INTERFACE* interface) {
 
     std::string geom_request = fmt::format("GEOM::get(signal={}, Config=1)", signal_str);
 
-    std::deque<std::string> split_vec{split_request(key_str)};
     const uda::Result& data = client.get(geom_request, std::to_string(source));
 
     // Check for errors
@@ -196,17 +250,10 @@ int GeometryMapReaderPlugin::get(IDAM_PLUGIN_INTERFACE* interface) {
         RAISE_PLUGIN_ERROR("Returned data is not of expected tree structure");
     }
 
+    cache_.insert({cache_key, data});
     uda::TreeNode root_tree = data.tree();
-    // Hack to skip two levels
-    if (!tree_check(root_tree)) {
-        root_tree = root_tree.child(0);
-    }
-    if (!tree_check(root_tree)) {
-        root_tree = root_tree.child(0);
-    }
-
-    if (tree_node_traversal(root_tree, split_vec)) {
-        return 1;
+    if (int err=navigate_to_path(split_vec, root_tree) != 0){
+        return err;
     }
 
     // (0) parse needed arguments
