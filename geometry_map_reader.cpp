@@ -27,6 +27,8 @@ class GeometryMapReaderPlugin {
         if (!init_ || STR_IEQUALS(request->function, "init") || STR_IEQUALS(request->function, "initialise")) {
             reset(plugin_interface);
             // Initialise plugin
+            const char* cache = getenv("UDA_GEOM_PLUGIN_CLIENT_CACHE");
+            m_cache_enabled = (cache == nullptr) or (std::stoi(cache) > 0);
             init_ = true;
         }
     }
@@ -47,10 +49,12 @@ class GeometryMapReaderPlugin {
     int get(IDAM_PLUGIN_INTERFACE* plugin_interface);
 
   private:
+    std::string make_cache_key(std::string_view signal, int source, std::string_view host, int port);
     std::optional<std::reference_wrapper<const uda::Result>> check_cache(const std::string& key);
 
     bool init_ = false;
     std::unordered_map<std::string, const uda::Result&> cache_ = {};
+    bool m_cache_enabled = true;
 };
 
 std::deque<std::string> split_request(std::string_view var) {
@@ -157,17 +161,23 @@ int set_return_data(IDAM_PLUGIN_INTERFACE* interface, uda::TreeNode& final_tree,
     return 0;
 };
 
-std::string make_cache_key(std::string_view signal, int source, std::string_view host, int port)
+std::string GeometryMapReaderPlugin::make_cache_key(std::string_view signal, int source, std::string_view host, int port)
 {
+    if (!m_cache_enabled) {
+        return {};
+    }
     // start with signal as most likely to change most frequently
     return fmt::format("{}|{}|{}|{}", signal, source, host, port);
 }
 
 std::optional<std::reference_wrapper<const uda::Result>> GeometryMapReaderPlugin::check_cache(const std::string& key)
 {
+    if (!m_cache_enabled) {
+        return std::nullopt;
+    }
+
     auto result = cache_.find(key);
-    if (result != cache_.end())
-    {
+    if (result != cache_.end()) {
         return std::cref(result->second);
     }
     return std::nullopt;
@@ -250,7 +260,10 @@ int GeometryMapReaderPlugin::get(IDAM_PLUGIN_INTERFACE* interface) {
         RAISE_PLUGIN_ERROR("Returned data is not of expected tree structure");
     }
 
-    cache_.insert({cache_key, data});
+    if (m_cache_enabled) {
+        cache_.insert({cache_key, data});
+    }
+
     uda::TreeNode root_tree = data.tree();
     if (int err=navigate_to_path(split_vec, root_tree) != 0){
         return err;

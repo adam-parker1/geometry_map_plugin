@@ -1,1 +1,2 @@
 # export dynamic environmental variables here
+export UDA_GEOM_PLUGIN_CLIENT_CACHE=1
