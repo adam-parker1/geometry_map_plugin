@@ -230,7 +230,7 @@ int GeometryMapReaderPlugin::get(IDAM_PLUGIN_INTERFACE* interface) {
     static uda::Client client;
 
     auto cache_key = make_cache_key(signal, source, host, port);
-    auto maybe_result = check_cache(key);
+    auto maybe_result = check_cache(cache_key);
     if (maybe_result.has_value()){
         const uda::Result& data = maybe_result->get();
         uda::TreeNode root_tree = data.tree();
