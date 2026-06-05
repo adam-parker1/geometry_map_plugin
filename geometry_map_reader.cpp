@@ -227,6 +227,10 @@ int GeometryMapReaderPlugin::get(IDAM_PLUGIN_INTERFACE* interface) {
     std::string const key_str{key};
     std::deque<std::string> split_vec{split_request(key_str)};
 
+    if (signal_str == "void" || signal_str.empty()) {
+        return 1;
+    }
+
     static uda::Client client;
 
     auto cache_key = make_cache_key(signal, source, host, port);
