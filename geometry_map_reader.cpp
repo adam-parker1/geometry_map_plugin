@@ -28,7 +28,7 @@ class GeometryMapReaderPlugin {
             reset(plugin_interface);
             // Initialise plugin
             const char* cache = getenv("UDA_GEOM_PLUGIN_CLIENT_CACHE");
-            m_cache_enabled = (cache == nullptr) or (std::stoi(cache) > 0);
+            m_cache_enabled = (cache != nullptr) and (std::stoi(cache) > 0);
             init_ = true;
         }
     }
@@ -54,7 +54,7 @@ class GeometryMapReaderPlugin {
 
     bool init_ = false;
     std::unordered_map<std::string, const uda::Result&> cache_ = {};
-    bool m_cache_enabled = true;
+    bool m_cache_enabled = false;
 };
 
 std::deque<std::string> split_request(std::string_view var) {
