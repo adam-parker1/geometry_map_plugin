@@ -211,11 +211,11 @@ int GeometryMapReaderPlugin::get(IDAM_PLUGIN_INTERFACE* interface) {
     data_block->dims = nullptr;
 
     // TODO: put into plugin relevant structure
-    int port{0};
-    FIND_REQUIRED_INT_VALUE(request_data->nameValueList, port);
-    const char* host{nullptr};
-    FIND_REQUIRED_STRING_VALUE(request_data->nameValueList, host);
-    std::string const host_str{host};
+    int geom_port{0};
+    FIND_REQUIRED_INT_VALUE(request_data->nameValueList, geom_port);
+    const char* geom_host{nullptr};
+    FIND_REQUIRED_STRING_VALUE(request_data->nameValueList, geom_host);
+    std::string const geom_host_str{geom_host};
 
     int source{0};
     FIND_REQUIRED_INT_VALUE(request_data->nameValueList, source);
@@ -233,7 +233,7 @@ int GeometryMapReaderPlugin::get(IDAM_PLUGIN_INTERFACE* interface) {
 
     static uda::Client client;
 
-    auto cache_key = make_cache_key(signal, source, host, port);
+    auto cache_key = make_cache_key(signal, source, geom_host, geom_port);
     auto maybe_result = check_cache(cache_key);
     if (maybe_result.has_value()){
         const uda::Result& data = maybe_result->get();
@@ -244,8 +244,8 @@ int GeometryMapReaderPlugin::get(IDAM_PLUGIN_INTERFACE* interface) {
         return set_return_data(interface, root_tree, split_vec.front());
     }
 
-    uda::Client::setServerHostName(host_str);
-    uda::Client::setServerPort(port);
+    uda::Client::setServerHostName(geom_host_str);
+    uda::Client::setServerPort(geom_port);
 
     // eg. GEOM::get(signal=/magnetics/pfcoil/d1_upper, Config=1);
     std::transform(signal_str.begin(), signal_str.end(), signal_str.begin(), ::tolower);
